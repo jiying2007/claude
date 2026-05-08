@@ -1,0 +1,16 @@
+# Claude Code 运行时数据（不纳入版本管理）
+sessions/
+history.jsonl
+cache/
+paste-cache/
+backups/
+*.lock
+!vendor/lock/vendor.lock.yaml
+
+# 本地密钥
+.env
+*.secret
+
+# 编辑器
+.DS_Store
+*.swp
