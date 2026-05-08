@@ -1,0 +1,4 @@
+name,description,max_parallel_agents,max_depth,notes
+minimal,最小可用配置，适合日常单人开发,2,2,using-skills + daily summary skills
+solo-dev,个人深度开发配置,4,3,minimal + debugging + parallel-collab + code-reviewer
+team-collab,团队协作配置,6,4,solo-dev + superpowers 全套 + 所有角色代理

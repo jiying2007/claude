@@ -1,0 +1,7 @@
+name,enabled,source_rel,profiles,description
+code-reviewer,1,agents/code-reviewer.md,solo-dev|team-collab,代码审查者——审查对照计划的代码质量
+architect,1,agents/architect.md,team-collab,架构师——模块边界与风险设计
+implementer,1,agents/implementer.md,team-collab,实现者——边界内实现与定向验证
+reviewer,1,agents/reviewer.md,team-collab,审查者——缺陷与回归风险审查
+tester,1,agents/tester.md,team-collab,测试者——验证覆盖与复现闭环
+integrator,1,agents/integrator.md,team-collab,整合者——冲突整合与最终交付
