@@ -1,5 +1,6 @@
 name,enabled,source_kind,version,source_rel,profiles,tags
 using-skills,1,local,1.0.0,commands/using-skills.md,minimal|solo-dev|team-collab,meta
+caveman,1,vendor,1.0.0,vendor/skills/caveman/1.0.0/SKILL.md,minimal|solo-dev|team-collab,comms
 session-wrap,1,vendor,3.1.0,vendor/skills/session-wrap/3.1.0/SKILL.md,minimal|solo-dev|team-collab,summary
 commit-daily-summary,1,vendor,3.1.0,vendor/skills/commit-daily-summary/3.1.0/SKILL.md,minimal|solo-dev|team-collab,summary
 project-daily-summary,1,vendor,3.1.0,vendor/skills/project-daily-summary/3.1.0/SKILL.md,minimal|solo-dev|team-collab,summary
