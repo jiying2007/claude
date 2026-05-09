@@ -94,3 +94,8 @@ This is non-negotiable.
 | Command | 触发场景 |
 |---------|---------|
 | `/parallel-collab` | 并行施工、多 agent 协作、CSV TODO 驱动 |
+
+### 基础设施
+| Command | 触发场景 |
+|---------|---------|
+| `/codex-fix-dns` | Codex 登录失败、token exchange failed、MCP startup incomplete、DNS 解析错误 |

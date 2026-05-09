@@ -19,3 +19,4 @@ receiving-code-review,1,vendor,1.1.9,vendor/plugins/superpowers/1.1.9/skills/rec
 test-driven-development,1,vendor,1.1.9,vendor/plugins/superpowers/1.1.9/skills/test-driven-development/SKILL.md,team-collab,superpowers
 using-git-worktrees,1,vendor,1.1.9,vendor/plugins/superpowers/1.1.9/skills/using-git-worktrees/SKILL.md,team-collab,superpowers
 finishing-a-development-branch,1,vendor,1.1.9,vendor/plugins/superpowers/1.1.9/skills/finishing-a-development-branch/SKILL.md,team-collab,superpowers
+codex-fix-dns,1,local,1.0.0,commands/codex-fix-dns.md,minimal|solo-dev|team-collab,infra
