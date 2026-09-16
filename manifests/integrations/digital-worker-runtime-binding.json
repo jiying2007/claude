@@ -9,18 +9,18 @@
   "terminal_replaceability_qualified": false,
   "agent_dev_kit": {
     "provider_repository": "jiying2007/agent-dev-kit",
-    "consumer_contract_commit": "dd28796d229afa17e3213fd8cd1cfb858316cd0a",
+    "consumer_contract_commit": "9e732da34eac52d1418b52691ca63eec15674363",
     "consumer_contract_ref": "manifests/integrations/claude-runtime-binding.json",
     "consumer_contract_version": "1.0",
-    "consumer_contract_canonical_sha256": "5d0bddcfdc78ca695b0ca6e395cf12fbcefe4a54b016941a3545204e048517a1",
+    "consumer_contract_canonical_sha256": "271d3ac19af14d49ada2f048963fbd77fe44b2843cd093be2723645c4a0e99ff",
     "asset_profile": "embedded-fullstack",
     "release": {
-      "version": "5.1.0",
-      "tag": "v5.1.0",
-      "commit": "59cbd5cb40ca7077ee5407636bfc617e295ec7e5",
-      "tree": "16d3c99d4dac8c41c09509b82c536a11cc058ca9",
-      "manifest_blob": "bc349b0dc003c553059cdddbc368ae8ea6ffda89",
-      "artifact_sha256": "d4684fe5888203b4a25e7dda9ab51b83fb900cae2d09adb6e5179a775748c965"
+      "version": "5.1.1",
+      "tag": "v5.1.1",
+      "commit": "e36dfec69f21806431b07daddc4bd78412179e62",
+      "tree": "9c37468930231bdfa7f230e38ed1b85e0dc0f5f5",
+      "manifest_blob": "4715a03db12ac28d2978356306381c028c75af76",
+      "artifact_sha256": "1924d79034a216f04dde0d08826dd5b87c597f090721335c1cec16e9bc88cbc1"
     },
     "target_contract_ref": "manifests/target-contracts/claude-code.json",
     "target_contract_canonical_sha256": "d62dbe86a4057edadddbde6af3ca25a880b47960a4c7a0a59b5b08f933d89a18"
