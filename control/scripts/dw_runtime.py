@@ -91,6 +91,24 @@ def nonempty(value: Any, label: str) -> str:
     return value.strip()
 
 
+def find_forbidden_contract_key(value: Any) -> str | None:
+    """Return an exact forbidden contract field name, ignoring values and longer guardrail keys."""
+    if isinstance(value, dict):
+        for key, item in value.items():
+            normalized = str(key).lower().replace("-", "_")
+            if normalized == "asset_bundle_hash" or normalized in FORBIDDEN_CLAIMS:
+                return normalized
+            nested = find_forbidden_contract_key(item)
+            if nested is not None:
+                return nested
+    elif isinstance(value, list):
+        for item in value:
+            nested = find_forbidden_contract_key(item)
+            if nested is not None:
+                return nested
+    return None
+
+
 def validate_local_contracts() -> dict[str, Any]:
     binding = load_json(BINDING_PATH, "runtime binding")
     bootstrap = load_json(BOOTSTRAP_PATH, "session bootstrap")
@@ -112,9 +130,9 @@ def validate_local_contracts() -> dict[str, Any]:
     require(set(bootstrap.get("modes", {})) == {"L0", "L1", "L2"}, "bootstrap modes drift")
     require(bootstrap.get("governance_escalation", {}).get("l1_to_l2_requires_new_bootstrap") is True, "L1->L2 bootstrap ratchet missing")
 
-    raw = BINDING_PATH.read_text(encoding="utf-8") + RECEIPT_SCHEMA_PATH.read_text(encoding="utf-8")
-    for forbidden in ("asset_bundle_hash", "verification_pass\"", "release_ready\"", "domain_gate_pass\""):
-        require(forbidden not in raw, f"forbidden authority/bundle field entered runtime contract: {forbidden}")
+    for label, document in (("runtime binding", binding), ("runtime execution receipt schema", schema)):
+        forbidden = find_forbidden_contract_key(document)
+        require(forbidden is None, f"forbidden authority/bundle field entered {label}: {forbidden}")
     return binding
 
 
