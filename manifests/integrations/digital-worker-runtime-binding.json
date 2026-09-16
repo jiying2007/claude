@@ -1,0 +1,58 @@
+{
+  "schema": "claude-digital-worker-runtime-binding/v1",
+  "contract_version": "1.0",
+  "status": "SOURCE_SET_READY_R1",
+  "repository": "jiying2007/claude",
+  "runtime_target": "claude-code",
+  "source_identity_mode": "exact-release-source-blobs",
+  "maturity_level": "R1-binding-conformance",
+  "terminal_replaceability_qualified": false,
+  "agent_dev_kit": {
+    "provider_repository": "jiying2007/agent-dev-kit",
+    "consumer_contract_commit": "dd28796d229afa17e3213fd8cd1cfb858316cd0a",
+    "consumer_contract_ref": "manifests/integrations/claude-runtime-binding.json",
+    "consumer_contract_version": "1.0",
+    "consumer_contract_canonical_sha256": "5d0bddcfdc78ca695b0ca6e395cf12fbcefe4a54b016941a3545204e048517a1",
+    "asset_profile": "embedded-fullstack",
+    "release": {
+      "version": "5.1.0",
+      "tag": "v5.1.0",
+      "commit": "59cbd5cb40ca7077ee5407636bfc617e295ec7e5",
+      "tree": "16d3c99d4dac8c41c09509b82c536a11cc058ca9",
+      "manifest_blob": "bc349b0dc003c553059cdddbc368ae8ea6ffda89",
+      "artifact_sha256": "d4684fe5888203b4a25e7dda9ab51b83fb900cae2d09adb6e5179a775748c965"
+    },
+    "target_contract_ref": "manifests/target-contracts/claude-code.json",
+    "target_contract_canonical_sha256": "d62dbe86a4057edadddbde6af3ca25a880b47960a4c7a0a59b5b08f933d89a18"
+  },
+  "runtime_profiles": ["minimal", "solo-dev", "team-collab"],
+  "default_runtime_profile": "solo-dev",
+  "materialization": {
+    "script": "control/scripts/dw_runtime.py",
+    "command": "materialize",
+    "provider_export_command": "scripts/devkit.sh export --target claude-code --profile embedded-fullstack",
+    "live_home_write": false,
+    "source_set_receipt_required": true,
+    "distribution_receipt_required": true
+  },
+  "session_bootstrap": {
+    "contract": "manifests/session_bootstrap.json",
+    "modes": ["L0", "L1", "L2"],
+    "formal_mode": "L2"
+  },
+  "execution_receipt": {
+    "schema": "schemas/runtime-execution-receipt.v2.schema.json",
+    "runtime": "claude-code",
+    "status_semantics": "execution-fact-only"
+  },
+  "hard_rules": {
+    "asset_profile_is_not_runtime_profile": true,
+    "source_of_truth_stays_in_agent_dev_kit": true,
+    "l1_to_l2_requires_new_bootstrap_and_source_set": true,
+    "runtime_output_is_not_verification_pass": true,
+    "execution_receipt_must_not_claim_verification_pass": true,
+    "execution_receipt_must_not_claim_release_ready": true,
+    "r1_is_not_r2": true,
+    "r2_requires_real_same_task_execution_receipt": true
+  }
+}
