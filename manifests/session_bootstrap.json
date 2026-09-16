@@ -1,0 +1,48 @@
+{
+  "schema": "claude-session-bootstrap/v1",
+  "contract_version": "1.0",
+  "role": "thin-session-bootstrap",
+  "runtime_target": "claude-code",
+  "modes": {
+    "L0": {
+      "purpose": "lightweight local query/read task",
+      "required": ["project_root"],
+      "formal_evidence": false
+    },
+    "L1": {
+      "purpose": "bounded engineering task with current reviewed context",
+      "required": ["project_root", "runtime_source_set_identity_ref", "runtime_distribution_identity_ref"],
+      "formal_evidence": false
+    },
+    "L2": {
+      "purpose": "formal engineering work with exact governed identity",
+      "required": [
+        "work_item_id",
+        "run_id",
+        "engineering_package_id",
+        "exact_base_commit",
+        "digital_worker_governance_identity",
+        "knowledge_context_identity",
+        "runtime_source_set_identity_ref",
+        "runtime_distribution_identity_ref"
+      ],
+      "formal_evidence": true,
+      "exact_digital_worker_required": true,
+      "exact_knowledge_required": true,
+      "exact_adk_release_required": true
+    }
+  },
+  "governance_escalation": {
+    "l1_to_l2_requires_new_bootstrap": true,
+    "l1_to_l2_requires_new_source_set_freeze": true,
+    "prior_context_is_provisional": true,
+    "prior_evidence_is_not_promoted_automatically": true
+  },
+  "rules": {
+    "session_bootstrap_is_not_control_plane": true,
+    "runtime_profile_is_runtime_owned": true,
+    "asset_profile_is_agent_dev_kit_owned": true,
+    "runtime_local_success_is_not_verification_pass": true,
+    "missing_formal_identity_blocks_l2": true
+  }
+}

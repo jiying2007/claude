@@ -1,0 +1,170 @@
+name: Digital Worker Runtime Binding
+
+on:
+  pull_request:
+    paths:
+      - 'manifests/integrations/digital-worker-runtime-binding.json'
+      - 'manifests/session_bootstrap.json'
+      - 'schemas/runtime-execution-receipt.v2.schema.json'
+      - 'control/scripts/dw_runtime.py'
+      - '.github/workflows/digital-worker-runtime-binding.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'manifests/integrations/digital-worker-runtime-binding.json'
+      - 'manifests/session_bootstrap.json'
+      - 'schemas/runtime-execution-receipt.v2.schema.json'
+      - 'control/scripts/dw_runtime.py'
+      - '.github/workflows/digital-worker-runtime-binding.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: digital-worker-runtime-binding-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  r1-contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Checkout Claude runtime binding
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.12'
+      - name: Install exact validator dependency
+        run: python -m pip install 'jsonschema==4.26.0'
+      - name: Checkout exact ADK consumer contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          root="$RUNNER_TEMP/adk-contract"
+          git init --quiet "$root"
+          git -C "$root" remote add origin https://github.com/jiying2007/agent-dev-kit.git
+          git -C "$root" fetch --quiet --depth=1 origin dd28796d229afa17e3213fd8cd1cfb858316cd0a
+          git -C "$root" checkout --quiet --detach FETCH_HEAD
+          test "$(git -C "$root" rev-parse HEAD)" = dd28796d229afa17e3213fd8cd1cfb858316cd0a
+      - name: Checkout immutable ADK 5.1.0 release
+        shell: bash
+        run: |
+          set -euo pipefail
+          root="$RUNNER_TEMP/adk-release"
+          git init --quiet "$root"
+          git -C "$root" remote add origin https://github.com/jiying2007/agent-dev-kit.git
+          git -C "$root" fetch --quiet --depth=1 origin 59cbd5cb40ca7077ee5407636bfc617e295ec7e5
+          git -C "$root" checkout --quiet --detach FETCH_HEAD
+          git -C "$root" fetch --quiet origin refs/tags/v5.1.0:refs/tags/v5.1.0
+          test "$(git -C "$root" rev-parse HEAD)" = 59cbd5cb40ca7077ee5407636bfc617e295ec7e5
+          test "$(git -C "$root" rev-parse 'v5.1.0^{}')" = 59cbd5cb40ca7077ee5407636bfc617e295ec7e5
+      - name: Install immutable ADK release dependencies
+        run: python -m pip install -e "$RUNNER_TEMP/adk-release"
+      - name: Validate local binding contracts
+        run: python control/scripts/dw_runtime.py validate
+      - name: Materialize exact ADK embedded-fullstack source set
+        run: >-
+          python control/scripts/dw_runtime.py materialize
+          --adk-contract-root "$RUNNER_TEMP/adk-contract"
+          --adk-release-root "$RUNNER_TEMP/adk-release"
+          --out "$RUNNER_TEMP/dw-materialized"
+          --runtime-profile solo-dev
+      - name: Run R1 fail-closed self-test
+        run: python control/scripts/dw_runtime.py self-test --materialization-root "$RUNNER_TEMP/dw-materialized"
+      - name: Exercise L2 exact identity bootstrap
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          root = Path(os.environ['RUNNER_TEMP']) / 'dw-materialized'
+          source_set = json.loads((root / 'source-set.json').read_text())
+          distribution = json.loads((root / 'runtime-distribution.json').read_text())
+          request = {
+              'mode': 'L2',
+              'work_item_id': 'R1-CONTRACT-WORK',
+              'run_id': 'R1-CONTRACT-RUN',
+              'engineering_package_id': 'R1-CONTRACT-PKG',
+              'exact_base_commit': '1' * 40,
+              'runtime_source_set_identity_ref': source_set['identity'],
+              'runtime_distribution_identity_ref': distribution['identity'],
+              'digital_worker_governance_identity': {
+                  'provider_commit': '2' * 40,
+                  'contract_catalog_digest': '3' * 64,
+                  'selected_domain_refs': ['domains/edge-foundation/domain.yaml'],
+                  'selected_routing_refs': ['domains/edge-foundation/routing.yaml'],
+              },
+              'knowledge_context_identity': {
+                  'provider_commit': '4' * 40,
+                  'provider_contract_digest': '5' * 64,
+                  'context_fingerprint': 'fixture-context-only',
+              },
+          }
+          Path(os.environ['RUNNER_TEMP'], 'l2-request.json').write_text(json.dumps(request), encoding='utf-8')
+          PY
+          python control/scripts/dw_runtime.py bootstrap \
+            --request "$RUNNER_TEMP/l2-request.json" \
+            --materialization-root "$RUNNER_TEMP/dw-materialized" \
+            --output "$RUNNER_TEMP/l2-bootstrap.json"
+      - name: Prove incomplete L2 identity blocks
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          path = Path(os.environ['RUNNER_TEMP']) / 'l2-request.json'
+          value = json.loads(path.read_text())
+          value['exact_base_commit'] = 'short-sha'
+          Path(os.environ['RUNNER_TEMP'], 'bad-l2.json').write_text(json.dumps(value), encoding='utf-8')
+          PY
+          if python control/scripts/dw_runtime.py bootstrap --request "$RUNNER_TEMP/bad-l2.json" --materialization-root "$RUNNER_TEMP/dw-materialized"; then
+            echo 'invalid L2 identity unexpectedly passed' >&2
+            exit 1
+          fi
+      - name: Validate receipt schema remains execution-fact-only
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          root = Path(os.environ['RUNNER_TEMP']) / 'dw-materialized'
+          source_set = json.loads((root / 'source-set.json').read_text())
+          distribution = json.loads((root / 'runtime-distribution.json').read_text())
+          receipt = {
+              'schema_version': 2,
+              'status': 'completed',
+              'runtime': 'claude-code',
+              'frozen_inputs_sha256': '6' * 64,
+              'verification_pass_claimed': False,
+              'runtime_identity': {
+                  'runtime_binding_repository': 'jiying2007/claude',
+                  'runtime_binding_commit': os.popen('git rev-parse HEAD').read().strip(),
+                  'runtime_target': 'claude-code',
+                  'runtime_profile': 'solo-dev',
+                  'runtime_host': 'github-actions-contract-fixture',
+                  'runtime_provider': 'anthropic',
+                  'runtime_version': 'contract-fixture-only',
+                  'runtime_source_set_identity_ref': source_set['identity'],
+                  'runtime_distribution_identity_ref': distribution['identity'],
+              },
+              'execution': {
+                  'started_at': '2026-09-16T00:00:00Z',
+                  'completed_at': '2026-09-16T00:00:01Z',
+                  'result_identity_ref': 'fixture://no-real-runtime-execution',
+                  'source_identity_ref': None,
+                  'exit_code': 0,
+                  'summary': 'schema fixture only; not R2 evidence',
+              },
+              'evidence_refs': ['fixture://contract-only'],
+          }
+          Path(os.environ['RUNNER_TEMP'], 'receipt.json').write_text(json.dumps(receipt), encoding='utf-8')
+          PY
+          python control/scripts/dw_runtime.py receipt --input "$RUNNER_TEMP/receipt.json" --output "$RUNNER_TEMP/validated-receipt.json"
