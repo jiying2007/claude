@@ -1,0 +1,16 @@
+name: Runner Probe
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Confirm hosted runner assignment
+        run: echo RUNNER_OK
