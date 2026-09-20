@@ -9,23 +9,27 @@
   "terminal_replaceability_qualified": false,
   "agent_dev_kit": {
     "provider_repository": "jiying2007/agent-dev-kit",
-    "consumer_contract_commit": "9e732da34eac52d1418b52691ca63eec15674363",
+    "consumer_contract_commit": "1d6c28e89eb98a4af5ac978707730783f0c84437",
     "consumer_contract_ref": "manifests/integrations/claude-runtime-binding.json",
     "consumer_contract_version": "1.0",
     "consumer_contract_canonical_sha256": "271d3ac19af14d49ada2f048963fbd77fe44b2843cd093be2723645c4a0e99ff",
     "asset_profile": "embedded-fullstack",
     "release": {
-      "version": "5.1.1",
-      "tag": "v5.1.1",
-      "commit": "e36dfec69f21806431b07daddc4bd78412179e62",
-      "tree": "9c37468930231bdfa7f230e38ed1b85e0dc0f5f5",
-      "manifest_blob": "4715a03db12ac28d2978356306381c028c75af76",
-      "artifact_sha256": "1924d79034a216f04dde0d08826dd5b87c597f090721335c1cec16e9bc88cbc1"
+      "version": "7.0.4",
+      "tag": "v7.0.4",
+      "commit": "1d6c28e89eb98a4af5ac978707730783f0c84437",
+      "tree": "c5b8fa7b11a81597ac2c7cd6fb44d7abf9605137",
+      "manifest_blob": "a5e5963545318c4a4498cda0d49d10f08c5f6412",
+      "artifact_sha256": "497e44ec83d2506c8721019aeca979965127b481203f33387806c51c0d1aff68"
     },
     "target_contract_ref": "manifests/target-contracts/claude-code.json",
     "target_contract_canonical_sha256": "d62dbe86a4057edadddbde6af3ca25a880b47960a4c7a0a59b5b08f933d89a18"
   },
-  "runtime_profiles": ["minimal", "solo-dev", "team-collab"],
+  "runtime_profiles": [
+    "minimal",
+    "solo-dev",
+    "team-collab"
+  ],
   "default_runtime_profile": "solo-dev",
   "materialization": {
     "script": "control/scripts/dw_runtime.py",
@@ -37,7 +41,11 @@
   },
   "session_bootstrap": {
     "contract": "manifests/session_bootstrap.json",
-    "modes": ["L0", "L1", "L2"],
+    "modes": [
+      "L0",
+      "L1",
+      "L2"
+    ],
     "formal_mode": "L2"
   },
   "execution_receipt": {

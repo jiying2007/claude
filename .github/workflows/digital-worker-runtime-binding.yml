@@ -48,21 +48,21 @@ jobs:
           root="$RUNNER_TEMP/adk-contract"
           git init --quiet "$root"
           git -C "$root" remote add origin https://github.com/jiying2007/agent-dev-kit.git
-          git -C "$root" fetch --quiet --depth=1 origin 9e732da34eac52d1418b52691ca63eec15674363
+          git -C "$root" fetch --quiet --depth=1 origin 1d6c28e89eb98a4af5ac978707730783f0c84437
           git -C "$root" checkout --quiet --detach FETCH_HEAD
-          test "$(git -C "$root" rev-parse HEAD)" = 9e732da34eac52d1418b52691ca63eec15674363
-      - name: Checkout immutable ADK 5.1.1 release
+          test "$(git -C "$root" rev-parse HEAD)" = 1d6c28e89eb98a4af5ac978707730783f0c84437
+      - name: Checkout immutable ADK 7.0.4 release
         shell: bash
         run: |
           set -euo pipefail
           root="$RUNNER_TEMP/adk-release"
           git init --quiet "$root"
           git -C "$root" remote add origin https://github.com/jiying2007/agent-dev-kit.git
-          git -C "$root" fetch --quiet --depth=1 origin e36dfec69f21806431b07daddc4bd78412179e62
+          git -C "$root" fetch --quiet --depth=1 origin 1d6c28e89eb98a4af5ac978707730783f0c84437
           git -C "$root" checkout --quiet --detach FETCH_HEAD
-          git -C "$root" fetch --quiet origin refs/tags/v5.1.1:refs/tags/v5.1.1
-          test "$(git -C "$root" rev-parse HEAD)" = e36dfec69f21806431b07daddc4bd78412179e62
-          test "$(git -C "$root" rev-parse 'v5.1.1^{}')" = e36dfec69f21806431b07daddc4bd78412179e62
+          git -C "$root" fetch --quiet origin refs/tags/v7.0.4:refs/tags/v7.0.4
+          test "$(git -C "$root" rev-parse HEAD)" = 1d6c28e89eb98a4af5ac978707730783f0c84437
+          test "$(git -C "$root" rev-parse 'v7.0.4^{}')" = 1d6c28e89eb98a4af5ac978707730783f0c84437
       - name: Install immutable ADK release dependencies
         run: python -m pip install -e "$RUNNER_TEMP/adk-release"
       - name: Validate local binding contracts
