@@ -39,9 +39,9 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  CLAUDE_BINDING_COMMIT: 8cd87956507f9dbde0438c9135493c96f3b2d318
-  ADK_CONTRACT_COMMIT: 9e732da34eac52d1418b52691ca63eec15674363
-  ADK_RELEASE_COMMIT: e36dfec69f21806431b07daddc4bd78412179e62
+  CLAUDE_BINDING_COMMIT: fba4551aa4a2abe5f74cff3c60e8318961b36add
+  ADK_CONTRACT_COMMIT: 1d6c28e89eb98a4af5ac978707730783f0c84437
+  ADK_RELEASE_COMMIT: 1d6c28e89eb98a4af5ac978707730783f0c84437
 
 jobs:
   execute:
@@ -97,7 +97,7 @@ jobs:
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           repository: jiying2007/claude
-          ref: 8cd87956507f9dbde0438c9135493c96f3b2d318
+          ref: fba4551aa4a2abe5f74cff3c60e8318961b36add
           path: claude-binding
           persist-credentials: false
           fetch-depth: 1
@@ -106,16 +106,16 @@ jobs:
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           repository: jiying2007/agent-dev-kit
-          ref: 9e732da34eac52d1418b52691ca63eec15674363
+          ref: 1d6c28e89eb98a4af5ac978707730783f0c84437
           path: adk-contract
           persist-credentials: false
           fetch-depth: 1
 
-      - name: Checkout immutable ADK v5.1.1 release
+      - name: Checkout immutable ADK v7.0.4 release
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           repository: jiying2007/agent-dev-kit
-          ref: e36dfec69f21806431b07daddc4bd78412179e62
+          ref: 1d6c28e89eb98a4af5ac978707730783f0c84437
           path: adk-release
           persist-credentials: false
           fetch-depth: 0
@@ -160,7 +160,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          git -C adk-release fetch --quiet origin refs/tags/v5.1.1:refs/tags/v5.1.1
+          git -C adk-release fetch --quiet origin refs/tags/v7.0.4:refs/tags/v7.0.4
           test "$(git -C adk-contract rev-parse HEAD)" = "$ADK_CONTRACT_COMMIT"
           test "$(git -C adk-release rev-parse HEAD)" = "$ADK_RELEASE_COMMIT"
           python claude-binding/control/scripts/dw_runtime.py materialize \
