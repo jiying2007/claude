@@ -24,6 +24,7 @@ PLAN=
 ADK_CONTRACT_ROOT=
 ADK_RELEASE_ROOT=
 OUT=
+PYTHON_BIN=${PYTHON_BIN:-python3}
 
 while [ "$#" -gt 0 ]; do
   case "$1" in
@@ -54,12 +55,18 @@ ADK_RELEASE_ROOT=$(cd "$ADK_RELEASE_ROOT" && pwd)
 mkdir -p "$OUT"
 OUT=$(cd "$OUT" && pwd)
 
-for cmd in git python claude tar sha256sum; do
+for cmd in git claude tar sha256sum; do
   command -v "$cmd" >/dev/null 2>&1 || { echo "missing command: $cmd" >&2; exit 2; }
 done
+command -v "$PYTHON_BIN" >/dev/null 2>&1 || { echo "missing Python 3 interpreter: $PYTHON_BIN" >&2; exit 2; }
+"$PYTHON_BIN" - <<'PY'
+import sys
+if sys.version_info < (3, 9):
+    raise SystemExit(f"Python >= 3.9 required, got {sys.version}")
+PY
 
 read_plan() {
-  python - "$PLAN" "$1" <<'PY'
+  "$PYTHON_BIN" - "$PLAN" "$1" <<'PY'
 import json, pathlib, sys
 value=json.loads(pathlib.Path(sys.argv[1]).read_text(encoding="utf-8"))
 for part in sys.argv[2].split("."):
@@ -93,12 +100,12 @@ test -z "$(git -C "$TARGET_ROOT" status --porcelain=v1 --untracked-files=all)" |
   exit 2
 }
 
-python "$DW_ROOT/scripts/runtime_r2_evidence.py" prepare \
+"$PYTHON_BIN" "$DW_ROOT/scripts/runtime_r2_evidence.py" prepare \
   --root "$DW_ROOT" \
   --target-root "$TARGET_ROOT" \
   --output "$OUT/recomputed-plan.json"
 
-python - "$PLAN" "$OUT/recomputed-plan.json" <<'PY'
+"$PYTHON_BIN" - "$PLAN" "$OUT/recomputed-plan.json" <<'PY'
 import json, pathlib, sys
 a=json.loads(pathlib.Path(sys.argv[1]).read_text())
 b=json.loads(pathlib.Path(sys.argv[2]).read_text())
@@ -109,7 +116,7 @@ if a["controlled_task"] != b["controlled_task"]:
 PY
 
 MAT="$OUT/claude-materialized"
-python "$ROOT/control/scripts/dw_runtime.py" materialize \
+"$PYTHON_BIN" "$ROOT/control/scripts/dw_runtime.py" materialize \
   --adk-contract-root "$ADK_CONTRACT_ROOT" \
   --adk-release-root "$ADK_RELEASE_ROOT" \
   --out "$MAT" \
@@ -119,7 +126,7 @@ R2_HOME="$OUT/claude-home"
 mkdir -p "$R2_HOME/.claude"
 cp -a "$MAT/distribution/." "$R2_HOME/.claude/"
 
-python - "$MAT/runtime-distribution.json" "$R2_HOME/.claude" <<'PY'
+"$PYTHON_BIN" - "$MAT/runtime-distribution.json" "$R2_HOME/.claude" <<'PY'
 import hashlib, json, pathlib, sys
 manifest=json.loads(pathlib.Path(sys.argv[1]).read_text())
 root=pathlib.Path(sys.argv[2])
@@ -129,7 +136,7 @@ for item in manifest["files"]:
         raise SystemExit("installed Claude asset identity mismatch: "+item["path"])
 PY
 
-python - "$PLAN" "$OUT/provider-authorization.json" <<'PY'
+"$PYTHON_BIN" - "$PLAN" "$OUT/provider-authorization.json" <<'PY'
 import hashlib, json, pathlib, sys
 plan_path=pathlib.Path(sys.argv[1])
 out=pathlib.Path(sys.argv[2])
@@ -149,7 +156,7 @@ value={
 out.write_text(json.dumps(value, indent=2, sort_keys=True)+"\n")
 PY
 
-python - "$PLAN" "$OUT/prompt.txt" <<'PY'
+"$PYTHON_BIN" - "$PLAN" "$OUT/prompt.txt" <<'PY'
 import json, pathlib, sys
 plan=json.loads(pathlib.Path(sys.argv[1]).read_text())
 pathlib.Path(sys.argv[2]).write_text(plan["prompt"]+"\n", encoding="utf-8")
@@ -183,7 +190,7 @@ git -C "$TARGET_ROOT" status --porcelain=v1 --untracked-files=all > "$OUT/claude
 git -C "$TARGET_ROOT" diff --binary > "$OUT/claude.patch"
 tar --exclude=.git -C "$TARGET_ROOT" -czf "$OUT/result-tree.tar.gz" .
 
-python - "$PLAN" "$OUT/provider-authorization.json" \
+"$PYTHON_BIN" - "$PLAN" "$OUT/provider-authorization.json" \
   "$MAT/source-set.json" "$MAT/runtime-distribution.json" \
   "$TARGET_ROOT" "$OUT/claude-execution.json" "$OUT/result-tree.tar.gz" \
   "$OUT/claude-native.json" "$TARGET_REPOSITORY" <<'PY'
@@ -243,18 +250,18 @@ receipt={
 out.write_text(json.dumps(receipt, indent=2, sort_keys=True)+"\n")
 PY
 
-python "$ROOT/control/scripts/dw_runtime.py" receipt \
+"$PYTHON_BIN" "$ROOT/control/scripts/dw_runtime.py" receipt \
   --input "$OUT/claude-native.json" \
   --output "$OUT/claude-native-validated.json"
 
-python "$DW_ROOT/scripts/runtime_r2_evidence.py" project-receipt \
+"$PYTHON_BIN" "$DW_ROOT/scripts/runtime_r2_evidence.py" project-receipt \
   --root "$DW_ROOT" \
   --runtime claude-code \
   --native-receipt "$OUT/claude-native.json" \
   --frozen-plan "$PLAN" \
   --output "$OUT/claude-portable.json"
 
-python - "$OUT" <<'PY'
+"$PYTHON_BIN" - "$OUT" <<'PY'
 import hashlib, json, pathlib, sys
 root=pathlib.Path(sys.argv[1])
 files=[]
