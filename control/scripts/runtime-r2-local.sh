@@ -290,6 +290,8 @@ manifest={
     "schema":"claude-r2-local-evidence-bundle/v1",
     "runtime":"claude-code",
     "execution_venue":"local-terminal",
+    "runtime_home_mode":"shared-user-home",
+    "credential_state_in_evidence":False,
     "github_provider_credential_used":False,
     "verification_pass_claimed":False,
     "r2_qualified":False,
