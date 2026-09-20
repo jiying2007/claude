@@ -60,6 +60,13 @@ jobs:
           assert 'CLAUDE_RUNTIME_CREDENTIAL' not in local
           assert 'claude -p' in local
           assert 'HOME=' in local
+          assert 'RUNTIME_HOME=' in local
+          assert 'R2_HOME=$(cd "$HOME" && pwd)' in local
+          assert '"runtime_home_mode":"shared-user-home"' in local
+          assert '"credential_state_in_evidence":False' in local
+          assert 'R2_HOME="$OUT/claude-home"' not in local
+          assert 'isolated HOME' not in local
+          assert 'runtime home must be the shared user HOME outside the evidence directory' in local
           assert '"authorization_mode":"explicit-local-operator-execution"' in local
           assert '"runtime_host":"local-terminal"' in local
           assert '"github_provider_credential_used":False' in local
@@ -86,5 +93,5 @@ jobs:
           assert blocks, 'no embedded Python blocks found'
           for index, block in enumerate(blocks, 1):
               compile(block, f'embedded-python-{index}', 'exec')
-          print('[PASS] Claude R2 execution is local-terminal owned, Python-3-only, and GitHub-provider-credential free')
+          print('[PASS] Claude R2 execution reuses shared user HOME, keeps credential state out of evidence, and remains provider-credential free in GitHub')
           PY

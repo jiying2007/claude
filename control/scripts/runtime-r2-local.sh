@@ -10,11 +10,13 @@ Usage:
     --frozen-plan /path/to/frozen-plan.json \
     --adk-contract-root /path/to/agent-dev-kit-contract-checkout \
     --adk-release-root /path/to/agent-dev-kit-release-checkout \
-    --out /path/to/output
+    --out /path/to/output \
+    [--runtime-home /path/to/existing-user-home]
 
 The script must be run from an exact Claude runtime-binding checkout that
-matches frozen-plan.json. It uses local Claude Code authentication only; no
-provider credential is read from or written to GitHub.
+matches frozen-plan.json. It uses the caller's existing user HOME by default,
+including the existing ~/.claude authentication/configuration. No provider
+credential is read from or written to GitHub.
 EOF
 }
 
@@ -24,6 +26,7 @@ PLAN=
 ADK_CONTRACT_ROOT=
 ADK_RELEASE_ROOT=
 OUT=
+RUNTIME_HOME=
 PYTHON_BIN=${PYTHON_BIN:-python3}
 
 while [ "$#" -gt 0 ]; do
@@ -34,6 +37,7 @@ while [ "$#" -gt 0 ]; do
     --adk-contract-root) ADK_CONTRACT_ROOT=$2; shift 2 ;;
     --adk-release-root) ADK_RELEASE_ROOT=$2; shift 2 ;;
     --out) OUT=$2; shift 2 ;;
+    --runtime-home) RUNTIME_HOME=$2; shift 2 ;;
     -h|--help) usage; exit 0 ;;
     *) echo "unknown argument: $1" >&2; usage >&2; exit 2 ;;
   esac
@@ -54,6 +58,19 @@ ADK_CONTRACT_ROOT=$(cd "$ADK_CONTRACT_ROOT" && pwd)
 ADK_RELEASE_ROOT=$(cd "$ADK_RELEASE_ROOT" && pwd)
 mkdir -p "$OUT"
 OUT=$(cd "$OUT" && pwd)
+
+if [ -n "$RUNTIME_HOME" ]; then
+  mkdir -p "$RUNTIME_HOME"
+  R2_HOME=$(cd "$RUNTIME_HOME" && pwd)
+else
+  R2_HOME=$(cd "$HOME" && pwd)
+fi
+case "$R2_HOME" in
+  "$OUT"|"$OUT"/*)
+    echo "runtime home must be the shared user HOME outside the evidence directory: $R2_HOME" >&2
+    exit 2
+    ;;
+esac
 
 for cmd in git claude tar sha256sum; do
   command -v "$cmd" >/dev/null 2>&1 || { echo "missing command: $cmd" >&2; exit 2; }
@@ -122,7 +139,6 @@ MAT="$OUT/claude-materialized"
   --out "$MAT" \
   --runtime-profile solo-dev
 
-R2_HOME="$OUT/claude-home"
 mkdir -p "$R2_HOME/.claude"
 cp -a "$MAT/distribution/." "$R2_HOME/.claude/"
 
@@ -147,6 +163,8 @@ value={
     "authorization_mode":"explicit-local-operator-execution",
     "actor":"local-operator",
     "runtime_host":"local-terminal",
+    "runtime_home_mode":"shared-user-home",
+    "credential_state_in_evidence":False,
     "frozen_plan_sha256":hashlib.sha256(plan_path.read_bytes()).hexdigest(),
     "frozen_inputs_sha256":plan["frozen_inputs_sha256"],
     "scope":"claude-provider-execution-only",
@@ -177,9 +195,10 @@ set -e
 if [ "$RC" -ne 0 ]; then
   cat >&2 <<EOF
 Claude local R2 execution failed with exit code $RC.
-If this isolated HOME is not authenticated, run:
-  HOME="$R2_HOME" claude
-then complete /login, exit, and rerun this script from a clean frozen target checkout.
+The run reused the existing shared user HOME:
+  HOME="$R2_HOME"
+Fix the normal Claude Code authentication/network/provider configuration, then
+rerun this script from a clean frozen target checkout.
 EOF
   exit "$RC"
 fi
@@ -271,6 +290,8 @@ manifest={
     "schema":"claude-r2-local-evidence-bundle/v1",
     "runtime":"claude-code",
     "execution_venue":"local-terminal",
+    "runtime_home_mode":"shared-user-home",
+    "credential_state_in_evidence":False,
     "github_provider_credential_used":False,
     "verification_pass_claimed":False,
     "r2_qualified":False,
