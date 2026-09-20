@@ -140,15 +140,42 @@ MAT="$OUT/claude-materialized"
   --runtime-profile solo-dev
 
 mkdir -p "$R2_HOME/.claude"
-cp -a "$MAT/distribution/." "$R2_HOME/.claude/"
-
-"$PYTHON_BIN" - "$MAT/runtime-distribution.json" "$R2_HOME/.claude" <<'PY'
-import hashlib, json, pathlib, sys
+"$PYTHON_BIN" - "$MAT/runtime-distribution.json" "$MAT/distribution" "$R2_HOME/.claude" <<'PY'
+import hashlib, json, pathlib, shutil, sys
 manifest=json.loads(pathlib.Path(sys.argv[1]).read_text())
-root=pathlib.Path(sys.argv[2])
+source_root=pathlib.Path(sys.argv[2])
+target_root=pathlib.Path(sys.argv[3])
+target_root.mkdir(parents=True, exist_ok=True)
+
+def sha(path):
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
 for item in manifest["files"]:
-    path=root/item["path"]
-    if not path.is_file() or hashlib.sha256(path.read_bytes()).hexdigest()!=item["sha256"]:
+    rel=pathlib.PurePosixPath(item["path"])
+    if rel.is_absolute() or ".." in rel.parts:
+        raise SystemExit("invalid Claude asset path: "+item["path"])
+    source=source_root.joinpath(*rel.parts)
+    target=target_root.joinpath(*rel.parts)
+    parent=target.parent
+    try:
+        parent.mkdir(parents=True, exist_ok=True)
+    except FileExistsError:
+        pass
+    if not parent.is_dir():
+        raise SystemExit("shared-home parent path is not a directory: "+str(parent))
+    if target.is_symlink():
+        if target.is_file() and sha(target)==item["sha256"]:
+            continue
+        raise SystemExit("shared-home managed file symlink conflicts with frozen asset: "+item["path"])
+    if target.exists() and target.is_dir():
+        raise SystemExit("shared-home managed file path is a directory: "+item["path"])
+    shutil.copy2(source, target)
+    if sha(target)!=item["sha256"]:
+        raise SystemExit("installed Claude asset identity mismatch: "+item["path"])
+
+for item in manifest["files"]:
+    path=target_root.joinpath(*pathlib.PurePosixPath(item["path"]).parts)
+    if not path.is_file() or sha(path)!=item["sha256"]:
         raise SystemExit("installed Claude asset identity mismatch: "+item["path"])
 PY
 
