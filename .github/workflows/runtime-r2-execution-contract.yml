@@ -66,6 +66,10 @@ jobs:
           assert '"credential_state_in_evidence":False' in local
           assert 'R2_HOME="$OUT/claude-home"' not in local
           assert 'isolated HOME' not in local
+          assert 'cp -a "$MAT/distribution/." "$R2_HOME/.claude/"' not in local
+          assert 'shared-home parent path is not a directory' in local
+          assert 'shared-home managed file symlink conflicts with frozen asset' in local
+          assert 'shutil.copy2(source, target)' in local
           assert 'runtime home must be the shared user HOME outside the evidence directory' in local
           assert '"authorization_mode":"explicit-local-operator-execution"' in local
           assert '"runtime_host":"local-terminal"' in local
@@ -93,5 +97,5 @@ jobs:
           assert blocks, 'no embedded Python blocks found'
           for index, block in enumerate(blocks, 1):
               compile(block, f'embedded-python-{index}', 'exec')
-          print('[PASS] Claude R2 execution reuses shared user HOME, keeps credential state out of evidence, and remains provider-credential free in GitHub')
+          print('[PASS] Claude R2 execution reuses shared user HOME with symlink-aware manifest installation, keeps credential state out of evidence, and remains provider-credential free in GitHub')
           PY
