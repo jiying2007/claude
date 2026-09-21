@@ -81,6 +81,12 @@ import sys
 if sys.version_info < (3, 11):
     raise SystemExit(f"Python >= 3.11 required, got {sys.version}")
 PY
+"$PYTHON_BIN" - <<'PY'
+try:
+    import jsonschema  # noqa: F401
+except ImportError as exc:
+    raise SystemExit("jsonschema is required for R2 replay postflight: python3 -m pip install jsonschema") from exc
+PY
 
 read_plan() {
   "$PYTHON_BIN" - "$PLAN" "$1" <<'PY'
@@ -239,19 +245,31 @@ git -C "$TARGET_ROOT" status --porcelain=v1 --untracked-files=all > "$OUT/claude
 git -C "$TARGET_ROOT" diff --binary > "$OUT/claude.patch"
 tar --exclude=.git -C "$TARGET_ROOT" -czf "$OUT/result-tree.tar.gz" .
 
+rm -f "$OUT/result-postflight.json" "$OUT/result-postflight-host.log" "$OUT/result-postflight-ota.log" "$OUT/result-postflight-summary.json"
+"$PYTHON_BIN" "$DW_ROOT/scripts/runtime_r2_result_postflight.py" \
+  --frozen-plan "$PLAN" \
+  --result-archive "$OUT/result-tree.tar.gz" \
+  --out "$OUT" \
+  --summary-json > "$OUT/result-postflight-summary.json"
+
 "$PYTHON_BIN" - "$PLAN" "$OUT/provider-authorization.json" \
   "$MAT/source-set.json" "$MAT/runtime-distribution.json" \
   "$TARGET_ROOT" "$OUT/claude-execution.json" "$OUT/result-tree.tar.gz" \
-  "$OUT/claude-native.json" "$TARGET_REPOSITORY" <<'PY'
+  "$OUT/result-postflight.json" "$OUT/claude-native.json" "$TARGET_REPOSITORY" <<'PY'
 import hashlib, json, pathlib, sys
-plan_path,auth_path,source_path,distribution_path,target,execution_file,result_archive,out=map(pathlib.Path,sys.argv[1:9])
-target_repository=sys.argv[9]
+plan_path,auth_path,source_path,distribution_path,target,execution_file,result_archive,postflight_path,out=map(pathlib.Path,sys.argv[1:10])
+target_repository=sys.argv[10]
 plan=json.loads(plan_path.read_text())
 auth=json.loads(auth_path.read_text())
 source=json.loads(source_path.read_text())
 distribution=json.loads(distribution_path.read_text())
 if auth["authorized"] is not True or auth["frozen_inputs_sha256"] != plan["frozen_inputs_sha256"]:
     raise SystemExit("local provider authorization does not match frozen plan")
+postflight=json.loads(postflight_path.read_text())
+if postflight.get("status") != "pass" or postflight.get("replay_self_contained") is not True:
+    raise SystemExit("replay result postflight did not pass")
+if postflight.get("verification_pass_claimed") is not False or postflight.get("r2_qualified") is not False:
+    raise SystemExit("replay result postflight overclaimed verification authority")
 def sha(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
 def tree_digest(root):
@@ -294,6 +312,7 @@ receipt={
         "claude-execution-file:sha256:"+sha(execution_file),
         "worktree-result:sha256:"+tree_digest(target),
         "replay-result-archive:sha256:"+sha(result_archive),
+        "replay-postflight:sha256:"+sha(postflight_path),
     ],
 }
 out.write_text(json.dumps(receipt, indent=2, sort_keys=True)+"\n")
@@ -333,7 +352,8 @@ PY
 tar -C "$OUT" -czf "$OUT/claude-r2-local-evidence.tar.gz" \
   bundle-manifest.json provider-authorization.json \
   claude-native.json claude-native-validated.json claude-portable.json \
-  claude-status.txt claude.patch claude-version.txt claude-execution.json result-tree.tar.gz
+  claude-status.txt claude.patch claude-version.txt claude-execution.json result-tree.tar.gz \
+  result-postflight-summary.json result-postflight.json result-postflight-host.log result-postflight-ota.log
 sha256sum "$OUT/claude-r2-local-evidence.tar.gz" > "$OUT/claude-r2-local-evidence.tar.gz.sha256"
 
 echo "Claude local R2 execution evidence ready: $OUT/claude-portable.json"
