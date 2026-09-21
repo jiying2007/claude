@@ -82,6 +82,13 @@ jobs:
           assert '"r2_qualified":False' in local
           assert 'runtime_r2_evidence.py" project-receipt' in local
           assert 'result-tree.tar.gz' in local
+          assert 'runtime_r2_result_postflight.py' in local
+          assert 'result-postflight.json' in local
+          assert 'result-postflight-host.log' in local
+          assert 'result-postflight-ota.log' in local
+          assert 'replay-postflight:sha256:' in local
+          assert 'jsonschema is required for R2 replay postflight' in local
+          assert local.index('runtime_r2_result_postflight.py') < local.index('claude-native.json')
 
           lines=local.splitlines()
           blocks=[]
@@ -100,5 +107,5 @@ jobs:
           assert blocks, 'no embedded Python blocks found'
           for index, block in enumerate(blocks, 1):
               compile(block, f'embedded-python-{index}', 'exec')
-          print('[PASS] Claude R2 execution reuses shared user HOME for auth/provider state while excluding user settings from the frozen execution context, keeps credential state out of evidence, and remains provider-credential free in GitHub')
+          print('[PASS] Claude R2 execution reuses shared user HOME for auth/provider state while excluding user settings, gates evidence on replay-self-contained Digital Worker postflight, and remains provider-credential free in GitHub')
           PY
