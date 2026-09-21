@@ -64,6 +64,11 @@ jobs:
           assert 'R2_HOME=$(cd "$HOME" && pwd)' in local
           assert '"runtime_home_mode":"shared-user-home"' in local
           assert '--setting-sources project,local' in local
+          assert 'MAX_TURNS=${CLAUDE_R2_MAX_TURNS:-32}' in local
+          assert '--max-turns) MAX_TURNS=$2' in local
+          assert '--max-turns "$MAX_TURNS"' in local
+          assert '1 <= turns <= 64' in local
+          assert 'Bash(mkdir *)' in local
           assert '"execution_context_mode":"frozen-project-local"' in local
           assert '"user_setting_source_loaded":False' in local
           assert '"credential_state_in_evidence":False' in local
@@ -107,5 +112,5 @@ jobs:
           assert blocks, 'no embedded Python blocks found'
           for index, block in enumerate(blocks, 1):
               compile(block, f'embedded-python-{index}', 'exec')
-          print('[PASS] Claude R2 execution reuses shared user HOME for auth/provider state while excluding user settings, gates evidence on replay-self-contained Digital Worker postflight, and remains provider-credential free in GitHub')
+          print('[PASS] Claude R2 execution reuses shared user HOME, excludes user behavioral settings, permits required workspace scaffolding, enforces a bounded configurable turn budget, gates evidence on replay postflight, and remains provider-credential free in GitHub')
           PY
