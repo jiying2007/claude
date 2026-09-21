@@ -11,7 +11,8 @@ Usage:
     --adk-contract-root /path/to/agent-dev-kit-contract-checkout \
     --adk-release-root /path/to/agent-dev-kit-release-checkout \
     --out /path/to/output \
-    [--runtime-home /path/to/existing-user-home]
+    [--runtime-home /path/to/existing-user-home] \
+    [--max-turns N]
 
 The script must be run from an exact Claude runtime-binding checkout that
 matches frozen-plan.json. It uses the caller's existing user HOME by default,
@@ -28,6 +29,7 @@ ADK_RELEASE_ROOT=
 OUT=
 RUNTIME_HOME=
 PYTHON_BIN=${PYTHON_BIN:-python3}
+MAX_TURNS=${CLAUDE_R2_MAX_TURNS:-32}
 
 while [ "$#" -gt 0 ]; do
   case "$1" in
@@ -38,6 +40,7 @@ while [ "$#" -gt 0 ]; do
     --adk-release-root) ADK_RELEASE_ROOT=$2; shift 2 ;;
     --out) OUT=$2; shift 2 ;;
     --runtime-home) RUNTIME_HOME=$2; shift 2 ;;
+    --max-turns) MAX_TURNS=$2; shift 2 ;;
     -h|--help) usage; exit 0 ;;
     *) echo "unknown argument: $1" >&2; usage >&2; exit 2 ;;
   esac
@@ -86,6 +89,16 @@ try:
     import jsonschema  # noqa: F401
 except ImportError as exc:
     raise SystemExit("jsonschema is required for R2 replay postflight: python3 -m pip install jsonschema") from exc
+PY
+"$PYTHON_BIN" - "$MAX_TURNS" <<'PY'
+import sys
+value=sys.argv[1]
+try:
+    turns=int(value)
+except ValueError as exc:
+    raise SystemExit("Claude R2 max turns must be an integer") from exc
+if not 1 <= turns <= 64:
+    raise SystemExit(f"Claude R2 max turns must be between 1 and 64, got {turns}")
 PY
 
 read_plan() {
@@ -221,10 +234,10 @@ set +e
   cd "$TARGET_ROOT"
   HOME="$R2_HOME" claude -p "$(cat "$OUT/prompt.txt")" \
     --output-format json \
-    --max-turns 20 \
+    --max-turns "$MAX_TURNS" \
     --setting-sources project,local \
     --permission-mode dontAsk \
-    --allowedTools "Read,Grep,Glob,Edit,Write,Bash(python *),Bash(python3 *),Bash(pytest *),Bash(sha256sum *),Bash(git status*),Bash(git diff*),Bash(git rev-parse*),Bash(ls *),Bash(find *)"
+    --allowedTools "Read,Grep,Glob,Edit,Write,Bash(mkdir *),Bash(python *),Bash(python3 *),Bash(pytest *),Bash(sha256sum *),Bash(git status*),Bash(git diff*),Bash(git rev-parse*),Bash(ls *),Bash(find *)"
 ) > "$OUT/claude-execution.json" 2> "$OUT/claude-stderr.log"
 RC=$?
 set -e
