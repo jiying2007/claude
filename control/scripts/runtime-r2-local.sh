@@ -191,6 +191,8 @@ value={
     "actor":"local-operator",
     "runtime_host":"local-terminal",
     "runtime_home_mode":"shared-user-home",
+    "execution_context_mode":"frozen-project-local",
+    "user_setting_source_loaded":False,
     "credential_state_in_evidence":False,
     "frozen_plan_sha256":hashlib.sha256(plan_path.read_bytes()).hexdigest(),
     "frozen_inputs_sha256":plan["frozen_inputs_sha256"],
@@ -214,6 +216,7 @@ set +e
   HOME="$R2_HOME" claude -p "$(cat "$OUT/prompt.txt")" \
     --output-format json \
     --max-turns 20 \
+    --setting-sources project,local \
     --permission-mode dontAsk \
     --allowedTools "Read,Grep,Glob,Edit,Write,Bash(python *),Bash(python3 *),Bash(pytest *),Bash(sha256sum *),Bash(git status*),Bash(git diff*),Bash(git rev-parse*),Bash(ls *),Bash(find *)"
 ) > "$OUT/claude-execution.json" 2> "$OUT/claude-stderr.log"
