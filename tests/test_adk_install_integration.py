@@ -105,7 +105,9 @@ class ActualADKInstallTest(unittest.TestCase):
             env = self.env(home, target)
             plan_path = Path(td) / "conflict.json"
             planned = self.wrapper(env, "--profile", "core", "--plan-out", str(plan_path))
-            self.assertEqual(planned.returncode, 0, planned.stderr + planned.stdout)
+            # ADK correctly writes a reviewable conflict plan but exits nonzero;
+            # an unresolved conflict must never be reported as ready.
+            self.assertEqual(planned.returncode, 2, planned.stderr + planned.stdout)
             plan = json.loads(plan_path.read_text(encoding="utf-8"))
             self.assertEqual(plan["status"], "needs-review")
             blocked = self.wrapper(env, "--apply-plan", str(plan_path))
