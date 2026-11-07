@@ -45,6 +45,28 @@ class ADKOnlyTests(unittest.TestCase):
             self.assertNotEqual(p.returncode, 0)
             self.assertEqual(marker.read_text(), '{"keep":true}')
 
+
+    def test_installer_rejects_legacy_direct_apply(self):
+        p=subprocess.run(["bash", str(ROOT/"control/scripts/install.sh"), "--apply"],
+                         capture_output=True,text=True)
+        self.assertNotEqual(p.returncode,0)
+
+    def test_installer_requires_exact_readable_plan(self):
+        # Without a reviewed checkout, even an apply-plan argument does not
+        # authorize a runtime write.
+        with tempfile.TemporaryDirectory() as tmp:
+            home=Path(tmp)
+            live=home/".claude"
+            live.mkdir()
+            marker=live/"settings.json"
+            marker.write_text("keep")
+            env=dict(os.environ,HOME=str(home),ADK_ROOT=str(home/"not-adk"))
+            p=subprocess.run(["bash",str(ROOT/"control/scripts/install.sh"),
+                              "--apply-plan",str(home/"missing.json")],
+                             env=env,text=True,capture_output=True)
+            self.assertNotEqual(p.returncode,0)
+            self.assertEqual(marker.read_text(),"keep")
+
     def _probe(self, entries, source_files, existing=None, symlink_parent=False):
         with tempfile.TemporaryDirectory() as tmp:
             root=Path(tmp)

@@ -17,12 +17,12 @@ Use a reviewed, immutable ADK checkout (Python >= 3.11) as the build/install sou
 
 ```bash
 ADK_ROOT=/reviewed/agent-dev-kit control/scripts/install.sh --profile core
-# Review the printed ADK install plan, then explicitly apply:
-ADK_ROOT=/reviewed/agent-dev-kit control/scripts/install.sh --profile core --apply
+# Review the generated PLAN=/tmp/.../plan.json, then apply that exact file:
+ADK_ROOT=/reviewed/agent-dev-kit control/scripts/install.sh --apply-plan /tmp/.../plan.json
 control/scripts/doctor.sh
 ```
 
-The wrapper creates an ADK **skill-only** install plan; `--apply` is required for writes.
+The wrapper creates an ADK **skill-only** install plan; only `--apply-plan` writes the exact previously reviewed plan.
 Existing unmanaged files or old/changed receipt-managed assets block the ADK transaction.
 Cross-version upgrades must follow ADK's exact-previous-source migration procedure; this wrapper
 does not bypass old receipts. The plan is left in the path printed to stdout.
