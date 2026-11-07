@@ -1,97 +1,75 @@
 #!/usr/bin/env bash
-# install.sh — 新机器首次安装 / 迁移到新路径
-#
-# 用法：
-#   control/scripts/install.sh                  # 默认 profile=team-collab
-#   control/scripts/install.sh [profile]        # 指定 profile
-#
-# 功能：
-#   1. 链接激活层到 ~/.claude（CLAUDE.md / settings.json / commands/ / agents/）
-#   2. 激活指定 profile 的 command symlinks
-#   3. 运行体检（doctor.sh）
-#   4. 输出下一步操作提示
-
+# Safe skill-only ADK install front-end for Claude Code. Does not manage user configuration.
 set -euo pipefail
 
-REPO="$(cd "$(dirname "$0")/../.." && pwd)"
-PROFILE="${1:-team-collab}"
-CLAUDE_DIR="$HOME/.claude"
+usage() {
+  cat <<'USAGE'
+Usage: ADK_ROOT=/exact/reviewed/agent-dev-kit control/scripts/install.sh [--profile NAME] [--plan-out ABSOLUTE_PATH] [--apply]
+Without --apply only a reviewable ADK install plan is created.
+Existing users must use the ADK exact-previous-source migration command when upgrading.
+This script does not install settings, CLAUDE.md, agents, hooks, commands or plugins.
+USAGE
+}
+profile=core
+apply=false
+plan_out=
+while (( $# )); do
+  case "$1" in
+    --help|-h) usage; exit 0 ;;
+    --profile) (( $# >= 2 )) || { echo "missing --profile argument" >&2; exit 2; }; profile=$2; shift 2 ;;
+    --plan-out) (( $# >= 2 )) || { echo "missing --plan-out argument" >&2; exit 2; }; plan_out=$2; shift 2 ;;
+    --apply) apply=true; shift ;;
+    *) echo "unknown argument: $1" >&2; usage >&2; exit 2 ;;
+  esac
+done
 
-if [ "${1:-}" = "--help" ] || [ "${1:-}" = "-h" ]; then
-  echo "用法: $(basename "$0") [profile]"
-  echo "  profile  激活的配置 profile（默认：team-collab）"
-  echo ""
-  echo "可用 profiles:"
-  awk -F, 'NR>1 && $1!="" {printf "  %-16s %s\n", $1, $2}' "$REPO/control/catalog/profiles.csv"
-  exit 0
+: "${HOME:?HOME is required}"
+: "${ADK_ROOT:?ADK_ROOT must identify a reviewed exact ADK checkout}"
+case "$ADK_ROOT" in /*) ;; *) echo "ADK_ROOT must be an absolute path" >&2; exit 2;; esac
+case "$profile" in *[!a-zA-Z0-9_-]*|"") echo "invalid profile" >&2; exit 2;; esac
+if [[ ! -f "$ADK_ROOT/manifest.json" || ! -f "$ADK_ROOT/scripts/devkit.sh" ]]; then
+  echo "ADK_ROOT lacks manifest.json or scripts/devkit.sh" >&2
+  exit 2
 fi
-
-echo "================================================"
-echo "  Claude Framework Install"
-echo "  REPO    : $REPO"
-echo "  TARGET  : $CLAUDE_DIR"
-echo "  PROFILE : $PROFILE"
-echo "================================================"
-echo ""
-
-# ---- 1. 确保 ~/.claude/ 存在 ----
-mkdir -p "$CLAUDE_DIR"
-
-# 链接 CLAUDE.md
-if [ -f "$CLAUDE_DIR/CLAUDE.md" ] && [ ! -L "$CLAUDE_DIR/CLAUDE.md" ]; then
-  mv "$CLAUDE_DIR/CLAUDE.md" "$CLAUDE_DIR/CLAUDE.md.bak"
-  echo "[INFO] 备份已有 CLAUDE.md → CLAUDE.md.bak"
+if ! command -v git >/dev/null 2>&1 || ! git -C "$ADK_ROOT" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+  echo "ADK_ROOT must be a Git checkout with an exact source identity" >&2
+  exit 2
 fi
-ln -sf "$REPO/CLAUDE.md" "$CLAUDE_DIR/CLAUDE.md"
-echo "[OK] CLAUDE.md"
-
-# 链接 settings.json（仅当不存在时）
-if [ ! -f "$CLAUDE_DIR/settings.json" ]; then
-  ln -sf "$REPO/settings.json" "$CLAUDE_DIR/settings.json"
-  echo "[OK] settings.json"
+if [[ -n "$(git -C "$ADK_ROOT" status --porcelain=v1 --untracked-files=all)" ]]; then
+  echo "ADK_ROOT is dirty; use a clean, reviewed exact checkout" >&2
+  exit 2
+fi
+adk_sha="$(git -C "$ADK_ROOT" rev-parse HEAD)"
+config_root="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
+case "$config_root" in
+  /*) ;;
+  *) echo "Claude configuration path must be absolute" >&2; exit 2;;
+esac
+if [[ -L "$config_root" || ( -e "$config_root" && ! -d "$config_root" ) ]]; then
+  echo "Claude configuration root is not a regular directory" >&2
+  exit 2
+fi
+# Do not create/replace any runtime root unless explicitly applying.
+if [[ -n "$plan_out" ]]; then
+  case "$plan_out" in /*) ;; *) echo "--plan-out must be absolute" >&2; exit 2;; esac
+  if [[ -e "$plan_out" || -L "$plan_out" ]]; then
+    echo "plan output already exists (refusing overwrite): $plan_out" >&2
+    exit 2
+  fi
 else
-  echo "[INFO] settings.json 已存在，跳过（请手动合并 hooks 配置）"
-  echo "       参考：$REPO/settings.json"
+  plan_out="$(mktemp "${TMPDIR:-/tmp}/adk-claude-plan.XXXXXXXX.json")"
+  rm -- "$plan_out"
 fi
 
-# 链接 commands/
-if [ -d "$CLAUDE_DIR/commands" ] && [ ! -L "$CLAUDE_DIR/commands" ]; then
-  mv "$CLAUDE_DIR/commands" "$CLAUDE_DIR/commands.bak"
-  echo "[INFO] 备份已有 commands/ → commands.bak"
-fi
-ln -sf "$REPO/commands" "$CLAUDE_DIR/commands"
-echo "[OK] commands/"
-
-# 链接 agents/
-if [ -d "$CLAUDE_DIR/agents" ] && [ ! -L "$CLAUDE_DIR/agents" ]; then
-  mv "$CLAUDE_DIR/agents" "$CLAUDE_DIR/agents.bak"
-  echo "[INFO] 备份已有 agents/ → agents.bak"
-fi
-ln -sf "$REPO/agents" "$CLAUDE_DIR/agents"
-echo "[OK] agents/"
-echo ""
-
-# ---- 2. 激活 profile ----
-echo "[INFO] 激活 profile: $PROFILE ..."
-"$REPO/control/scripts/activate-profile.sh" "$PROFILE"
-echo ""
-
-# ---- 3. 体检 ----
-echo "[INFO] 执行体检 ..."
-if "$REPO/control/scripts/doctor.sh"; then
-  echo ""
-  echo "================================================"
-  echo "  安装成功！"
-  echo "================================================"
+echo "ADK_SOURCE=$adk_sha"
+echo "CLAUDE_TARGET=$config_root"
+bash "$ADK_ROOT/scripts/devkit.sh" install plan \
+  --tool claude-code --target "$config_root" --profile "$profile" \
+  --asset-kind skill --mode copy --output "$plan_out"
+echo "PLAN=$plan_out"
+if [[ "$apply" == true ]]; then
+  echo "Applying only the reviewed ADK skill selection; unmanaged conflicts fail closed"
+  bash "$ADK_ROOT/scripts/devkit.sh" install apply --plan "$plan_out"
 else
-  echo ""
-  echo "================================================"
-  echo "  安装完成，但体检有错误，请检查上方输出"
-  echo "================================================"
+  echo "PLAN_ONLY: no Claude runtime files were changed"
 fi
-
-echo ""
-echo "下一步建议："
-echo "  切换 profile    : $REPO/control/scripts/activate-profile.sh <profile>"
-echo "  体检            : $REPO/control/scripts/doctor.sh"
-echo "  可用 profiles   : $(awk -F, 'NR>1 && $1!="" {printf "%s ", $1}' "$REPO/control/catalog/profiles.csv")"

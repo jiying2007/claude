@@ -1,9 +1,4 @@
-name: superpowers
-version: 1.1.9
-source: https://github.com/jnMetaCode/superpowers-zh
-local_path: vendor/plugins/superpowers/1.1.9
-locked_at: 2026-05-08
-
+# Historical, not automatically activated. Review each asset before ADK/project migration.
 personal_skills:
   - name: session-wrap
     version: 3.1.0
@@ -20,3 +15,6 @@ personal_skills:
   - name: worktree-closeout
     version: 3.1.0
     local_path: vendor/skills/worktree-closeout/3.1.0
+  - name: caveman
+    version: 1.0.0
+    local_path: vendor/skills/caveman/1.0.0
