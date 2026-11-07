@@ -20,3 +20,16 @@ jobs:
         run: bash -n control/scripts/install.sh control/scripts/doctor.sh control/scripts/runtime-r2-local.sh
       - name: Source and copy safety regression
         run: python -m unittest discover -s tests -p 'test_adk_only.py' -v
+      - name: Checkout immutable ADK 10.0.5 source for isolated native installation
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          repository: jiying2007/agent-dev-kit
+          ref: af4304d080aa32753b5d717f591fb6d2d715b8fb
+          path: adk-source
+          persist-credentials: false
+      - name: Install exact ADK build-only validation dependencies
+        run: python -m pip install --disable-pip-version-check --no-input 'PyYAML==6.0.3' 'jsonschema==4.26.0'
+      - name: Isolated real ADK plan, apply, conflict, and rollback
+        env:
+          CLAUDE_E2E_ADK_ROOT: ${{ github.workspace }}/adk-source
+        run: python -m unittest discover -s tests -p 'test_adk_install_integration.py' -v
