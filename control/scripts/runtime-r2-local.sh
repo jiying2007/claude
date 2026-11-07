@@ -164,37 +164,61 @@ import hashlib, json, pathlib, shutil, sys
 manifest=json.loads(pathlib.Path(sys.argv[1]).read_text())
 source_root=pathlib.Path(sys.argv[2])
 target_root=pathlib.Path(sys.argv[3])
-target_root.mkdir(parents=True, exist_ok=True)
+if target_root.is_symlink() or not target_root.is_dir():
+    raise SystemExit("shared-home root must be a regular directory")
 
 def sha(path):
-    return hashlib.sha256(path.read_bytes()).hexdigest()
+    h=hashlib.sha256()
+    with path.open("rb") as stream:
+        for block in iter(lambda: stream.read(1024 * 1024), b""):
+            h.update(block)
+    return h.hexdigest()
 
+# Preflight ALL entries before copying any. Never replace an unowned or modified
+# file, including a regular file; no parent symlink is allowed.
+pending=[]
+seen=set()
 for item in manifest["files"]:
-    rel=pathlib.PurePosixPath(item["path"])
-    if rel.is_absolute() or ".." in rel.parts:
-        raise SystemExit("invalid Claude asset path: "+item["path"])
+    path=item.get("path")
+    digest=item.get("sha256")
+    if not isinstance(path,str) or not isinstance(digest,str) or len(digest)!=64:
+        raise SystemExit("invalid runtime-distribution entry")
+    rel=pathlib.PurePosixPath(path)
+    if rel.is_absolute() or not rel.parts or any(part in ("", ".", "..") for part in rel.parts):
+        raise SystemExit("invalid Claude asset path: "+path)
+    if path in seen:
+        raise SystemExit("duplicate Claude asset path: "+path)
+    seen.add(path)
     source=source_root.joinpath(*rel.parts)
     target=target_root.joinpath(*rel.parts)
-    parent=target.parent
-    try:
-        parent.mkdir(parents=True, exist_ok=True)
-    except FileExistsError:
-        pass
-    if not parent.is_dir():
-        raise SystemExit("shared-home parent path is not a directory: "+str(parent))
+    if source.is_symlink() or not source.is_file() or sha(source)!=digest:
+        raise SystemExit("invalid or drifted Claude source asset: "+path)
+    current=target_root
+    for part in rel.parts[:-1]:
+        current=current/part
+        if current.is_symlink():
+            raise SystemExit("shared-home parent symlink is forbidden: "+str(current))
+        if current.exists() and not current.is_dir():
+            raise SystemExit("shared-home parent path is not a directory: "+str(current))
     if target.is_symlink():
-        if target.is_file() and sha(target)==item["sha256"]:
-            continue
-        raise SystemExit("shared-home managed file symlink conflicts with frozen asset: "+item["path"])
-    if target.exists() and target.is_dir():
-        raise SystemExit("shared-home managed file path is a directory: "+item["path"])
+        raise SystemExit("shared-home managed file symlink conflicts with frozen asset: "+path)
+    if target.exists():
+        if not target.is_file() or sha(target)!=digest:
+            raise SystemExit("shared-home unmanaged file conflicts with frozen asset: "+path)
+    else:
+        pending.append((source,target,digest))
+for source,target,digest in pending:
+    if target.parent.is_symlink():
+        raise SystemExit("shared-home parent symlink is forbidden: "+str(target.parent))
+    target.parent.mkdir(parents=True, exist_ok=True)
+    if target.exists() or target.is_symlink():
+        raise SystemExit("shared-home destination appeared during install: "+str(target))
     shutil.copy2(source, target)
-    if sha(target)!=item["sha256"]:
-        raise SystemExit("installed Claude asset identity mismatch: "+item["path"])
-
+    if target.is_symlink() or sha(target)!=digest:
+        raise SystemExit("installed Claude asset identity mismatch: "+str(target))
 for item in manifest["files"]:
     path=target_root.joinpath(*pathlib.PurePosixPath(item["path"]).parts)
-    if not path.is_file() or sha(path)!=item["sha256"]:
+    if path.is_symlink() or not path.is_file() or sha(path)!=item["sha256"]:
         raise SystemExit("installed Claude asset identity mismatch: "+item["path"])
 PY
 

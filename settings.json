@@ -1,16 +1,4 @@
 {
   "theme": "light-ansi",
-  "model": "sonnet[1m]",
-  "hooks": {
-    "SessionStart": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "~/claude/control/scripts/session-start.sh"
-          }
-        ]
-      }
-    ]
-  }
+  "model": "sonnet[1m]"
 }
